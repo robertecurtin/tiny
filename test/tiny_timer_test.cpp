@@ -5,6 +5,7 @@
 
 extern "C" {
 #include "tiny_timer.h"
+#include "tiny_utils.h"
 }
 
 #include "CppUTest/TestHarness.h"
@@ -19,6 +20,7 @@ TEST_GROUP(tiny_timer) {
   tiny_timer_t timer_1;
   tiny_timer_t timer_2;
   tiny_timer_t timer_with_restart;
+  tiny_timer_t another_timer;
 
   tiny_time_source_double_t time_source;
 
@@ -50,6 +52,20 @@ TEST_GROUP(tiny_timer) {
 
   void given_that_timer_with_restart_has_been_started(tiny_timer_t * timer, tiny_timer_ticks_t ticks) {
     after_timer_with_restart_is_started(timer, ticks);
+  }
+
+  static void callback_that_starts_another_timer(tiny_timer_group_t * group, void* context) {
+    reinterpret(timer, context, tiny_timer_t*);
+    tiny_timer_start(group, timer, restart_ticks, callback, context);
+  }
+
+  void after_timer_that_starts_another_timer_is_started(tiny_timer_t * timer, tiny_timer_ticks_t ticks) {
+    restart_ticks = ticks;
+    tiny_timer_start(&group, timer, ticks, callback_that_starts_another_timer, &another_timer);
+  }
+
+  void given_that_timer_that_starts_another_timer_has_been_started(tiny_timer_t * timer, tiny_timer_ticks_t ticks) {
+    after_timer_that_starts_another_timer_is_started(timer, ticks);
   }
 
   void after_timer_is_started(tiny_timer_t * timer, tiny_timer_ticks_t ticks) {
@@ -230,6 +246,12 @@ TEST(tiny_timer, should_allow_a_timer_to_be_restarted_in_its_callback) {
   should_invoke_timer_callback_after(&timer_with_restart, 5);
   should_invoke_timer_callback_after(&timer_with_restart, 5);
   should_invoke_timer_callback_after(&timer_with_restart, 5);
+}
+
+TEST(tiny_timer, should_allow_a_timer_to_start_another_timer) {
+  given_that_timer_that_starts_another_timer_has_been_started(&timer_with_restart, 5);
+
+  should_invoke_timer_callback_after(&timer_2, 10);
 }
 
 TEST(tiny_timer, should_not_allow_a_timer_to_be_starved) {
